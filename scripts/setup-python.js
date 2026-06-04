@@ -22,5 +22,8 @@ if (!fs.existsSync(venvPy)) {
   run(py, ['-m', 'venv', venv]);
 }
 run(venvPy, ['-m', 'pip', 'install', '--upgrade', 'pip']);
-run(venvPy, ['-m', 'pip', 'install', 'pylsl', 'numpy', 'scipy', 'websockets']);
+run(venvPy, ['-m', 'pip', 'install',
+  'pylsl', 'numpy', 'scipy', 'websockets',
+  'PyQt6', 'PyQt6-WebSockets',
+]);
 console.log('\n[setup:python] OK. venv at', venv);

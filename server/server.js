@@ -219,10 +219,31 @@ wss.on('connection', (ws, req) => {
 
 connectRecorder();
 
-server.listen(PORT, () => {
-  console.log(`\n[server] HTTPS on https://0.0.0.0:${PORT}`);
-  console.log('[server]  · Researcher:  /researcher');
-  console.log('[server]  · Participant: /participant');
-  console.log(`[server]  · WS hub path: wss://<host>:${PORT}/ws`);
-  console.log(`[server]  · Recorder upstream: ${RECORDER_URL}\n`);
+function lanIPv4s() {
+  const os = require('os');
+  const out = [];
+  const ifs = os.networkInterfaces();
+  for (const name of Object.keys(ifs)) {
+    for (const a of ifs[name] || []) {
+      if (a.family === 'IPv4' && !a.internal) out.push({ name, ip: a.address });
+    }
+  }
+  return out;
+}
+
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`\n[server] HTTPS listening on 0.0.0.0:${PORT}  (all interfaces)`);
+  const ips = lanIPv4s();
+  if (ips.length === 0) {
+    console.log('[server]  ! no non-loopback IPv4 detected. Are you connected to Wi-Fi?');
+  } else {
+    console.log('[server] open these URLs from other devices on the same Wi-Fi:');
+    for (const { name, ip } of ips) {
+      const flag = /vEthernet|VirtualBox|WSL|Loopback|Hyper-V/i.test(name) ? '  (virtual - skip for Quest)' : '';
+      console.log(`[server]   - https://${ip}:${PORT}/researcher        (interface: ${name})${flag}`);
+      console.log(`[server]     https://${ip}:${PORT}/participant`);
+    }
+  }
+  console.log(`[server]  WS hub path: wss://<host>:${PORT}/ws`);
+  console.log(`[server]  Recorder upstream: ${RECORDER_URL}\n`);
 });

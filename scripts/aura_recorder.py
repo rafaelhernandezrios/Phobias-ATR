@@ -99,6 +99,7 @@ class Session:
         self.phobia_id = None
         self.experiment_id = None
         self.session_type = "hybrid"
+        self.duration_seconds = 0
         self.baseline_calibration_seconds = 0
         self.started_at = 0.0
         self.current_level = None
@@ -108,6 +109,8 @@ class Session:
         self.baseline_buffer = []
         # CSV record buffer
         self.records = []  # list of dicts
+        # Auto_sequence scheduled tasks
+        self.sequence_tasks = []
 
 
 class Recorder:
@@ -292,12 +295,19 @@ class Recorder:
                 phase = "calibration"
                 fear, suggestion = 0.0, "hold"
             else:
-                if self.session.baseline_stats is None and self.session.baseline_buffer:
-                    arr = {k: np.array([d[k] for d in self.session.baseline_buffer])
-                           for k in self.session.baseline_buffer[0]}
-                    self.session.baseline_stats = {
-                        k: (float(v.mean()), float(v.std())) for k, v in arr.items()
-                    }
+                if self.session.baseline_stats is None:
+                    if self.session.baseline_buffer:
+                        arr = {k: np.array([d[k] for d in self.session.baseline_buffer])
+                               for k in self.session.baseline_buffer[0]}
+                        self.session.baseline_stats = {
+                            k: (float(v.mean()), float(v.std() or 1.0)) for k, v in arr.items()
+                        }
+                    else:
+                        # Calibration ended with no usable samples (e.g. 0s calibration
+                        # or AURA was slow to produce data). Seed baseline from the
+                        # current metrics so adaptation can still proceed.
+                        print("[aura] baseline empty -- seeding baseline from current metrics")
+                        self.session.baseline_stats = {k: (float(v), 1.0) for k, v in metrics.items()}
                 fear, suggestion = self.fear_index(metrics)
                 phase = "adaptation"
 
@@ -348,17 +358,63 @@ class Recorder:
             self.clients.discard(ws)
             print("[aura] bridge disconnected")
 
+    def _cancel_sequence_tasks(self):
+        for t in self.session.sequence_tasks:
+            try:
+                t.cancel()
+            except Exception:
+                pass
+        self.session.sequence_tasks = []
+
+    async def _auto_sequence_step(self, ws, delay, target_level):
+        try:
+            await asyncio.sleep(delay)
+        except asyncio.CancelledError:
+            return
+        if not self.session.active:
+            return
+        self.session.current_level = target_level
+        print(f"[aura] auto_sequence -> level {target_level}")
+        try:
+            await ws.send(json.dumps({
+                "type": "force_level", "level": target_level, "source": "aura", "auto": True
+            }))
+        except Exception:
+            pass
+
+    def _schedule_auto_sequence(self, ws):
+        self._cancel_sequence_tasks()
+        if self.session.session_type != "auto_sequence":
+            return
+        total = float(self.session.duration_seconds or 0)
+        if total <= 0:
+            return
+        start_level = self.session.current_level or 0
+        remaining = 5 - start_level
+        if remaining <= 0:
+            return
+        step = total / (remaining + 1)
+        print(f"[aura] auto_sequence: {start_level}->5 every {step:.1f}s (total {total:.0f}s)")
+        for i in range(1, remaining + 1):
+            target = start_level + i
+            self.session.sequence_tasks.append(
+                asyncio.create_task(self._auto_sequence_step(ws, step * i, target))
+            )
+
     async def handle_msg(self, ws, m):
         t = m.get("type")
         if t == "controller_start":
+            self._cancel_sequence_tasks()
             self.session = Session()
             self.session.active = True
             self.session.phobia_id = m.get("phobia_id")
             self.session.experiment_id = m.get("experiment_id") or f"exp_{int(time.time())}"
             self.session.session_type = m.get("session_type", "hybrid")
+            self.session.duration_seconds = int(m.get("duration_seconds") or 0)
             self.session.baseline_calibration_seconds = int(m.get("baseline_calibration_seconds") or 0)
             self.session.current_level = m.get("level", 0)
             self.session.started_at = time.time()
+            self._schedule_auto_sequence(ws)
             await ws.send(json.dumps({
                 "type": "start_experiment",
                 "phobia_id": self.session.phobia_id,
@@ -384,6 +440,7 @@ class Recorder:
             await ws.send(json.dumps({"type": "force_level", "level": m.get("level"), "source": "aura", "auto": True}))
         elif t in ("stop", "stop_video"):
             print(f"[aura] stop received -- saving CSV (records={len(self.session.records)})")
+            self._cancel_sequence_tasks()
             self.save_csv()
             self.session.active = False
             await ws.send(json.dumps({"type": "stop_video", "source": "aura"}))

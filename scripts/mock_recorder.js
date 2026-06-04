@@ -17,7 +17,37 @@ let session = {
   baseline_calibration_seconds: 0,
   current_level: null,
   auto_adaptation: true,
+  session_type: 'hybrid',
+  duration_seconds: 0,
+  sequence_timers: [],
 };
+
+function clearSequenceTimers() {
+  for (const t of session.sequence_timers) clearTimeout(t);
+  session.sequence_timers = [];
+}
+
+function scheduleAutoSequence(ws) {
+  clearSequenceTimers();
+  if (session.session_type !== 'auto_sequence') return;
+  const startLevel = session.current_level ?? 0;
+  const totalMs = (session.duration_seconds || 0) * 1000;
+  if (totalMs <= 0) return;
+  const remainingSteps = 5 - startLevel;
+  if (remainingSteps <= 0) return;
+  const stepMs = totalMs / (remainingSteps + 1);
+  console.log(`[mock-recorder] auto_sequence: ${startLevel}->5 every ${(stepMs / 1000).toFixed(1)}s`);
+  for (let i = 1; i <= remainingSteps; i++) {
+    const target = startLevel + i;
+    const handle = setTimeout(() => {
+      if (!session.active) return;
+      session.current_level = target;
+      console.log(`[mock-recorder] auto_sequence -> level ${target}`);
+      ws.send(JSON.stringify({ type: 'force_level', level: target, source: 'mock', auto: true }));
+    }, stepMs * i);
+    session.sequence_timers.push(handle);
+  }
+}
 
 function broadcast(obj) {
   const msg = JSON.stringify(obj);
@@ -48,7 +78,8 @@ setInterval(() => {
   const faa = 0.05 * fear + 0.05 * randn();
 
   let suggestion = 'hold';
-  if (!inCal && session.current_level != null) {
+  // In auto_sequence the level is driven by the schedule, not by EEG suggestions
+  if (!inCal && session.session_type === 'hybrid' && session.current_level != null) {
     if (fear > 0.8 && session.current_level > 0) suggestion = 'down';
     else if (fear < -0.4 && session.current_level < 5) suggestion = 'up';
   }
@@ -80,13 +111,18 @@ wss.on('connection', (ws) => {
     let m; try { m = JSON.parse(data.toString()); } catch { return; }
     switch (m.type) {
       case 'controller_start':
+        clearSequenceTimers();
         session = {
           active: true,
           startedAt: Date.now(),
           baseline_calibration_seconds: m.baseline_calibration_seconds || 0,
           current_level: m.level ?? 0,
           auto_adaptation: true,
+          session_type: m.session_type || 'hybrid',
+          duration_seconds: m.duration_seconds || 0,
+          sequence_timers: [],
         };
+        scheduleAutoSequence(ws);
         // Echo start so the bridge re-broadcasts to clients
         ws.send(JSON.stringify({
           type: 'start_experiment',
@@ -115,6 +151,7 @@ wss.on('connection', (ws) => {
         ws.send(JSON.stringify({ type: 'force_level', level: m.level, source: 'mock', auto: true }));
         break;
       case 'stop':
+        clearSequenceTimers();
         session.active = false;
         ws.send(JSON.stringify({ type: 'stop_video', source: 'mock' }));
         break;
