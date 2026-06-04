@@ -8,7 +8,11 @@ const ROOT = path.resolve(__dirname, '..');
 const mock = process.argv.includes('--mock');
 
 function spawnLogged(label, cmd, args, opts = {}) {
-  const p = spawn(cmd, args, { cwd: ROOT, shell: process.platform === 'win32', ...opts });
+  // On Windows we use shell:true so things like `python` (without .exe) resolve via PATH,
+  // but cmd.exe splits the command on spaces unless the executable path is quoted.
+  const isWin = process.platform === 'win32';
+  const safeCmd = (isWin && /\s/.test(cmd) && !cmd.startsWith('"')) ? `"${cmd}"` : cmd;
+  const p = spawn(safeCmd, args, { cwd: ROOT, shell: isWin, ...opts });
   const tag = (line) => process.stdout.write(`[${label}] ${line}`);
   p.stdout.on('data', (d) => d.toString().split(/\r?\n/).filter(Boolean).forEach((l) => tag(l + '\n')));
   p.stderr.on('data', (d) => d.toString().split(/\r?\n/).filter(Boolean).forEach((l) => tag(l + '\n')));

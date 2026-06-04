@@ -13,7 +13,8 @@ const venvPy = isWin
 
 function run(cmd, args) {
   console.log('>', cmd, args.join(' '));
-  const r = spawnSync(cmd, args, { stdio: 'inherit', shell: isWin });
+  const safeCmd = (isWin && /\s/.test(cmd) && !cmd.startsWith('"')) ? `"${cmd}"` : cmd;
+  const r = spawnSync(safeCmd, args, { stdio: 'inherit', shell: isWin });
   if (r.status !== 0) process.exit(r.status || 1);
 }
 
