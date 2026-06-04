@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>VR Phobia — Researcher</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body class="researcher">
+  <header>
+    <h1>Researcher panel</h1>
+    <div class="conn">
+      <span id="ws-dot" class="dot off"></span>
+      <span id="ws-label">WS desconectado</span>
+      <span id="rec-dot" class="dot off" title="recorder/AURA"></span>
+      <span id="rec-label">recorder offline</span>
+    </div>
+  </header>
+
+  <main class="grid">
+    <section class="card">
+      <h2>Sesión</h2>
+      <label>Fobia
+        <select id="phobia"></select>
+      </label>
+      <label>Nivel inicial
+        <select id="level">
+          <option value="0">0 — baseline</option>
+          <option value="1">1</option><option value="2">2</option>
+          <option value="3">3</option><option value="4">4</option>
+          <option value="5">5</option>
+        </select>
+      </label>
+      <label>Experiment ID
+        <input id="exp-id" type="text" placeholder="exp_2026_06_04_001" />
+      </label>
+      <label>Duración (s)
+        <input id="duration" type="number" min="0" value="300" />
+      </label>
+      <label>Tipo de sesión
+        <select id="session-type">
+          <option value="hybrid">hybrid (manual + EEG)</option>
+          <option value="auto_sequence">auto_sequence (0→5)</option>
+        </select>
+      </label>
+      <label>Calibración baseline (s)
+        <input id="baseline-cal" type="number" min="0" value="45" />
+      </label>
+    </section>
+
+    <section class="card">
+      <h2>Control</h2>
+      <div class="row">
+        <button id="btn-start" class="primary">Start experiment</button>
+        <button id="btn-stop" class="danger">Stop</button>
+      </div>
+      <label class="toggle">
+        <input id="adapt" type="checkbox" checked /> Adaptación automática (EEG)
+      </label>
+      <h3>Niveles manuales</h3>
+      <div class="levels">
+        <button data-lvl="0">0</button>
+        <button data-lvl="1">1</button>
+        <button data-lvl="2">2</button>
+        <button data-lvl="3">3</button>
+        <button data-lvl="4">4</button>
+        <button data-lvl="5">5</button>
+      </div>
+      <p class="hint">Nivel activo: <strong id="current-level">—</strong></p>
+    </section>
+
+    <section class="card span2">
+      <h2>EEG / AURA — métricas en vivo</h2>
+      <div class="metrics">
+        <div><span class="k">Fase</span><span id="m-phase">—</span></div>
+        <div><span class="k">Fear / Engagement</span><span id="m-fear">—</span></div>
+        <div><span class="k">Sugerencia</span><span id="m-sugg">—</span></div>
+        <div><span class="k">θ Fz</span><span id="m-theta">—</span></div>
+        <div><span class="k">β/α (Fz,Cz)</span><span id="m-ba">—</span></div>
+        <div><span class="k">α posterior</span><span id="m-ap">—</span></div>
+        <div><span class="k">FAA</span><span id="m-faa">—</span></div>
+        <div><span class="k">Baseline restante</span><span id="m-baseline">—</span></div>
+      </div>
+    </section>
+
+    <section class="card span2">
+      <h2>Log</h2>
+      <pre id="log"></pre>
+    </section>
+  </main>
+
+  <script src="/researcher.js"></script>
+</body>
+</html>

@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>VR — Esperando al investigador</title>
+  <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+  <style>
+    html, body { margin: 0; padding: 0; background: #000; color: #fff; font-family: system-ui, sans-serif; overflow: hidden; }
+    #hud {
+      position: fixed; top: 12px; left: 12px; right: 12px; z-index: 5;
+      display: flex; justify-content: space-between; align-items: center;
+      font-size: 13px; color: #cfd3dc; pointer-events: none;
+    }
+    #hud .pill { background: rgba(0,0,0,0.45); padding: 6px 10px; border-radius: 999px; backdrop-filter: blur(4px); }
+    #emergency {
+      position: fixed; bottom: 18px; right: 18px; z-index: 10;
+      background: #b71f2b; color: white; border: 0; padding: 12px 18px;
+      font-weight: 700; border-radius: 8px; cursor: pointer; font-size: 14px;
+      box-shadow: 0 4px 18px rgba(183,31,43,0.4);
+    }
+    #autoplay-overlay {
+      position: fixed; inset: 0; z-index: 20; display: none;
+      align-items: center; justify-content: center; background: rgba(0,0,0,0.85);
+      color: white; font-size: 18px;
+    }
+    #autoplay-overlay button {
+      padding: 16px 28px; font-size: 16px; border-radius: 10px; border: 0;
+      background: #2e5fff; color: white; font-weight: 700; cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div id="hud">
+    <span class="pill" id="hud-state">Esperando al investigador…</span>
+    <span class="pill" id="hud-conn">conectando…</span>
+  </div>
+
+  <button id="emergency">EMERGENCY EXIT</button>
+
+  <div id="autoplay-overlay">
+    <button id="play-btn">Tocar para iniciar vídeo</button>
+  </div>
+
+  <a-scene background="color: #000" vr-mode-ui="enabled: true" embedded style="height: 100vh; width: 100vw;">
+    <a-assets>
+      <video id="vid-360" crossorigin="anonymous" playsinline webkit-playsinline loop="false" muted></video>
+    </a-assets>
+
+    <!-- 360 sphere (hidden until video starts) -->
+    <a-videosphere id="sphere" src="#vid-360" rotation="0 -90 0" visible="false"></a-videosphere>
+
+    <!-- Wait scene: simple text in VR -->
+    <a-entity id="wait-scene">
+      <a-sky color="#0b0d12"></a-sky>
+      <a-entity position="0 1.6 -2.5">
+        <a-text value="Esperando al investigador" align="center" color="#FFFFFF" width="6" position="0 0.3 0"></a-text>
+        <a-text id="wait-conn-text" value="Conectando…" align="center" color="#8aa" width="4" position="0 -0.2 0"></a-text>
+      </a-entity>
+      <a-entity light="type: ambient; color: #888"></a-entity>
+    </a-entity>
+
+    <a-entity camera look-controls position="0 1.6 0"></a-entity>
+  </a-scene>
+
+  <script>
+  (function () {
+    const params = new URLSearchParams(location.search);
+    const autoVR = params.get('vr') === '1';
+
+    const vid = document.getElementById('vid-360');
+    const sphere = document.getElementById('sphere');
+    const waitScene = document.getElementById('wait-scene');
+    const hudState = document.getElementById('hud-state');
+    const hudConn = document.getElementById('hud-conn');
+    const waitConnText = document.getElementById('wait-conn-text');
+    const overlay = document.getElementById('autoplay-overlay');
+    const playBtn = document.getElementById('play-btn');
+    const emergency = document.getElementById('emergency');
+
+    let content = null;
+    let ws = null;
+    let currentPhobia = null;
+    let currentLevel = null;
+    let recorderOK = false;
+    let wsOpen = false;
+    let lastAdaptiveTs = 0;
+    let levelChangeCooldownUntil = 0;
+    let autoAdaptation = true;
+
+    function setConn(text) { hudConn.textContent = text; waitConnText.setAttribute('value', text); }
+
+    async function loadContent() {
+      const res = await fetch('/api/content');
+      content = await res.json();
+    }
+
+    function videoUrlFor(phobiaId, level) {
+      if (!content) return null;
+      if (level === 0) {
+        const p = content.phobias.find((x) => x.id === phobiaId);
+        return (p && p.baseline && p.baseline.video_url_360) || content.baseline.video_url_360;
+      }
+      const p = content.phobias.find((x) => x.id === phobiaId);
+      if (!p) return null;
+      const lv = p.levels.find((l) => l.level_number === level);
+      return lv ? lv.video_url_360 : null;
+    }
+
+    function showWait() {
+      sphere.setAttribute('visible', false);
+      waitScene.setAttribute('visible', true);
+      hudState.textContent = 'Esperando al investigador…';
+      try { vid.pause(); } catch (_) {}
+    }
+
+    function showExposure(phobiaId, level) {
+      const url = videoUrlFor(phobiaId, level);
+      if (!url) { console.warn('no video for', phobiaId, level); return; }
+      hudState.textContent = `${phobiaId} · nivel ${level}`;
+      // Swap source and play
+      vid.src = url;
+      vid.load();
+      const p = vid.play();
+      const onOk = () => {
+        waitScene.setAttribute('visible', false);
+        sphere.setAttribute('visible', true);
+        overlay.style.display = 'none';
+      };
+      if (p && typeof p.then === 'function') {
+        p.then(onOk).catch(() => {
+          overlay.style.display = 'flex';
+          playBtn.onclick = () => {
+            vid.play().then(onOk).catch((e) => console.warn('play failed', e));
+          };
+        });
+      } else {
+        onOk();
+      }
+    }
+
+    function applyAdaptiveSuggestion(s) {
+      if (!autoAdaptation || !currentPhobia || currentLevel == null) return;
+      const now = Date.now();
+      if (now < levelChangeCooldownUntil) return;
+      let next = currentLevel;
+      if (s === 'up' && currentLevel < 5) next = currentLevel + 1;
+      if (s === 'down' && currentLevel > 0) next = currentLevel - 1;
+      if (next !== currentLevel) {
+        currentLevel = next;
+        levelChangeCooldownUntil = now + 8000; // 8s hysteresis
+        send({ type: 'level_change', level: next });
+        showExposure(currentPhobia, next);
+      }
+    }
+
+    function send(obj) {
+      if (ws && ws.readyState === 1) ws.send(JSON.stringify(obj));
+    }
+
+    function connectWS() {
+      ws = new WebSocket(`wss://${location.host}/ws`);
+      ws.addEventListener('open', () => {
+        wsOpen = true;
+        setConn(recorderOK ? 'conectado' : 'conectando…');
+      });
+      ws.addEventListener('close', () => {
+        wsOpen = false; recorderOK = false;
+        setConn('reintentando…');
+        setTimeout(connectWS, 2000);
+      });
+      ws.addEventListener('message', (ev) => {
+        let m; try { m = JSON.parse(ev.data); } catch { return; }
+        switch (m.type) {
+          case 'recorder_ready': recorderOK = true; setConn('conectado'); break;
+          case 'recorder_error': recorderOK = false; setConn('recorder offline'); break;
+          case 'start_experiment':
+            currentPhobia = m.phobia_id;
+            currentLevel = m.level ?? 0;
+            showExposure(currentPhobia, currentLevel);
+            break;
+          case 'force_level':
+            if (currentPhobia != null) {
+              currentLevel = m.level;
+              showExposure(currentPhobia, currentLevel);
+            }
+            break;
+          case 'auto_adaptation_toggle':
+            autoAdaptation = !!m.enabled;
+            break;
+          case 'adaptive_state':
+            lastAdaptiveTs = Date.now();
+            if (autoAdaptation && m.adaptive_phase === 'adaptation') {
+              applyAdaptiveSuggestion(m.level_suggestion);
+            }
+            break;
+          case 'stop_video':
+            currentLevel = null;
+            showWait();
+            break;
+        }
+      });
+    }
+
+    emergency.addEventListener('click', () => {
+      send({ type: 'stop' });
+      showWait();
+    });
+
+    vid.addEventListener('error', () => console.warn('video error', vid.error));
+
+    // Enter VR automatically when ?vr=1 (Quest)
+    document.querySelector('a-scene').addEventListener('loaded', () => {
+      if (autoVR) {
+        try { document.querySelector('a-scene').enterVR(); } catch (e) { /* ignore */ }
+      }
+    });
+
+    (async () => {
+      await loadContent();
+      showWait();
+      connectWS();
+    })();
+  })();
+  </script>
+</body>
+</html>

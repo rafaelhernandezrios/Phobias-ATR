@@ -1,0 +1,23 @@
+{
+  "name": "vr-phobia-ikan",
+  "version": "1.0.0",
+  "description": "VR Phobia Exposure + EEG (AURA/LSL) — researcher panel + Quest 360 viewer",
+  "private": true,
+  "scripts": {
+    "start": "node server/server.js",
+    "cert": "node scripts/generate-cert.js",
+    "mock": "node scripts/mock_recorder.js",
+    "experiment": "node scripts/run-experiment.js",
+    "experiment:mock": "node scripts/run-experiment.js --mock",
+    "setup:python": "node scripts/setup-python.js",
+    "test:ws": "node scripts/test-ws.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "ws": "^8.16.0",
+    "http-proxy": "^1.18.1"
+  },
+  "devDependencies": {
+    "selfsigned": "^2.4.1"
+  }
+}

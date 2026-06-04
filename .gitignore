@@ -1,0 +1,7 @@
+node_modules/
+.venv/
+server/cert/
+output/
+videos/
+*.log
+.DS_Store

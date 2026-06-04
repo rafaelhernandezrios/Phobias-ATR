@@ -1,0 +1,75 @@
+{
+  "baseline": {
+    "id": "baseline",
+    "name": "Escena neutral",
+    "video_url_360": "videos/baseline.mp4",
+    "duration_seconds": 60
+  },
+  "phobias": [
+    {
+      "id": "arachnophobia",
+      "name": "Arachnophobia",
+      "name_es": "Aracnofobia",
+      "baseline": { "video_url_360": "videos/arachnophobia_baseline.mp4", "duration_seconds": 60 },
+      "levels": [
+        { "level_number": 1, "video_url_360": "videos/arachnophobia_level1.mp4", "duration_seconds": 90 },
+        { "level_number": 2, "video_url_360": "videos/arachnophobia_level2.mp4", "duration_seconds": 90 },
+        { "level_number": 3, "video_url_360": "videos/arachnophobia_level3.mp4", "duration_seconds": 90 },
+        { "level_number": 4, "video_url_360": "videos/arachnophobia_level4.mp4", "duration_seconds": 90 },
+        { "level_number": 5, "video_url_360": "videos/arachnophobia_level5.mp4", "duration_seconds": 90 }
+      ]
+    },
+    {
+      "id": "claustrophobia",
+      "name": "Claustrophobia",
+      "name_es": "Claustrofobia",
+      "baseline": { "video_url_360": "videos/claustrophobia_baseline.mp4", "duration_seconds": 60 },
+      "levels": [
+        { "level_number": 1, "video_url_360": "videos/claustrophobia_level1.mp4", "duration_seconds": 90 },
+        { "level_number": 2, "video_url_360": "videos/claustrophobia_level2.mp4", "duration_seconds": 90 },
+        { "level_number": 3, "video_url_360": "videos/claustrophobia_level3.mp4", "duration_seconds": 90 },
+        { "level_number": 4, "video_url_360": "videos/claustrophobia_level4.mp4", "duration_seconds": 90 },
+        { "level_number": 5, "video_url_360": "videos/claustrophobia_level5.mp4", "duration_seconds": 90 }
+      ]
+    },
+    {
+      "id": "acrophobia",
+      "name": "Acrophobia",
+      "name_es": "Acrofobia",
+      "baseline": { "video_url_360": "videos/acrophobia_baseline.mp4", "duration_seconds": 60 },
+      "levels": [
+        { "level_number": 1, "video_url_360": "videos/acrophobia_level1.mp4", "duration_seconds": 90 },
+        { "level_number": 2, "video_url_360": "videos/acrophobia_level2.mp4", "duration_seconds": 90 },
+        { "level_number": 3, "video_url_360": "videos/acrophobia_level3.mp4", "duration_seconds": 90 },
+        { "level_number": 4, "video_url_360": "videos/acrophobia_level4.mp4", "duration_seconds": 90 },
+        { "level_number": 5, "video_url_360": "videos/acrophobia_level5.mp4", "duration_seconds": 90 }
+      ]
+    },
+    {
+      "id": "ophidiophobia",
+      "name": "Ophidiophobia",
+      "name_es": "Ofidiofobia",
+      "baseline": { "video_url_360": "videos/ophidiophobia_baseline.mp4", "duration_seconds": 60 },
+      "levels": [
+        { "level_number": 1, "video_url_360": "videos/ophidiophobia_level1.mp4", "duration_seconds": 90 },
+        { "level_number": 2, "video_url_360": "videos/ophidiophobia_level2.mp4", "duration_seconds": 90 },
+        { "level_number": 3, "video_url_360": "videos/ophidiophobia_level3.mp4", "duration_seconds": 90 },
+        { "level_number": 4, "video_url_360": "videos/ophidiophobia_level4.mp4", "duration_seconds": 90 },
+        { "level_number": 5, "video_url_360": "videos/ophidiophobia_level5.mp4", "duration_seconds": 90 }
+      ]
+    },
+    {
+      "id": "entomophobia",
+      "name": "Entomophobia",
+      "name_es": "Entomofobia",
+      "baseline": { "video_url_360": "videos/entomophobia_baseline.mp4", "duration_seconds": 60 },
+      "levels": [
+        { "level_number": 1, "video_url_360": "videos/entomophobia_level1.mp4", "duration_seconds": 90 },
+        { "level_number": 2, "video_url_360": "videos/entomophobia_level2.mp4", "duration_seconds": 90 },
+        { "level_number": 3, "video_url_360": "videos/entomophobia_level3.mp4", "duration_seconds": 90 },
+        { "level_number": 4, "video_url_360": "videos/entomophobia_level4.mp4", "duration_seconds": 90 },
+        { "level_number": 5, "video_url_360": "videos/entomophobia_level5.mp4", "duration_seconds": 90 }
+      ]
+    }
+  ]
+}
