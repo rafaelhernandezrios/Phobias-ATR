@@ -27,6 +27,14 @@ from collections import deque
 from datetime import datetime
 from pathlib import Path
 
+# Force UTF-8 stdout/stderr so non-ASCII characters don't crash on Windows
+# locales like cp932 (Japanese) or cp1252.
+try:
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+except Exception:
+    pass
+
 import numpy as np
 
 try:
@@ -122,7 +130,7 @@ class Recorder:
                 return False
             print("[aura] pylsl not installed. pip install pylsl  (and start AURA software). Is AURA running?")
             sys.exit(2)
-        print('[aura] resolving LSL stream name="AURA" …')
+        print('[aura] resolving LSL stream name="AURA" ...')
         streams = resolve_byprop("name", "AURA", timeout=5.0)
         if not streams:
             if self.allow_mock:
@@ -134,7 +142,7 @@ class Recorder:
         info = self.inlet.info()
         self.fs = float(info.nominal_srate() or 250.0)
         self.n_channels = int(info.channel_count() or 8)
-        print(f"[aura] connected: {info.name()} · {self.n_channels}ch @ {self.fs:.1f} Hz")
+        print(f"[aura] connected: {info.name()} | {self.n_channels}ch @ {self.fs:.1f} Hz")
         if self.n_channels < 8:
             print(f"[aura] WARNING: only {self.n_channels} channels — degraded montage")
         return True
