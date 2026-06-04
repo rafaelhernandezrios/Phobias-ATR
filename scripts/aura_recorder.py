@@ -205,47 +205,88 @@ class Recorder:
 
     # ---- Loops ----
     async def pull_loop(self, have_lsl):
+        last_log = time.time()
+        samples_since_log = 0
         while True:
             if have_lsl and self.inlet is not None:
                 try:
-                    samples, ts = self.inlet.pull_chunk(timeout=0.0, max_samples=64)
+                    # Small blocking timeout so we actually accumulate samples
+                    # instead of busy-polling empty buffers.
+                    samples, ts = self.inlet.pull_chunk(timeout=0.2, max_samples=256)
                 except Exception as e:
                     print("[aura] pull_chunk error:", e)
                     samples, ts = [], []
                 if samples:
+                    samples_since_log += len(samples)
                     for s, t in zip(samples, ts):
                         self.buffer.append(s)
                         self.timestamps.append(t)
                         if self.session.active:
-                            self.session.records.append({
+                            rec = {
                                 "ts": t,
                                 "level": self.session.current_level,
                                 "phobia_id": self.session.phobia_id,
-                                **{f"ch{i+1}": v for i, v in enumerate(s)},
-                            })
+                            }
+                            for i, v in enumerate(s):
+                                rec[f"ch{i+1}"] = v
+                            self.session.records.append(rec)
+                # Heartbeat: print sample rate every ~5s so user sees data flowing
+                now = time.time()
+                if now - last_log >= 5.0:
+                    rate = samples_since_log / (now - last_log)
+                    print(f"[aura] samples last 5s: {samples_since_log} ({rate:.1f} Hz), buffer={len(self.buffer)}")
+                    samples_since_log = 0
+                    last_log = now
             else:
-                # mock samples
+                # mock samples (synthetic fallback)
                 if self.session.active:
                     n = 16
                     fake = np.random.randn(n, 8) * 5.0
                     for s in fake:
                         self.buffer.append(s.tolist())
                         self.timestamps.append(time.time())
-            await asyncio.sleep(0.02)
+                        rec = {"ts": time.time(), "level": self.session.current_level, "phobia_id": self.session.phobia_id}
+                        for i, v in enumerate(s):
+                            rec[f"ch{i+1}"] = float(v)
+                        self.session.records.append(rec)
+            await asyncio.sleep(0.05 if have_lsl else 0.02)
 
     async def adaptive_loop(self):
         while True:
             await asyncio.sleep(2.0)
             if not self.session.active:
                 continue
-            metrics = self.compute_metrics()
-            if metrics is None:
-                continue
 
             t = time.time() - self.session.started_at
             in_cal = t < self.session.baseline_calibration_seconds
+            metrics = self.compute_metrics()
 
-            # Accumulate baseline
+            # If we don't have enough samples yet, still emit a diagnostic state
+            # so the researcher panel shows something rather than a frozen "--".
+            if metrics is None:
+                await self.broadcast({
+                    "type": "adaptive_state",
+                    "fear_index": 0.0,
+                    "level_suggestion": "hold",
+                    "current_level": self.session.current_level,
+                    "adaptive_phase": "warmup",
+                    "baseline_remaining_s": max(0.0, self.session.baseline_calibration_seconds - t),
+                    "metrics": {
+                        "theta_fz": float("nan"),
+                        "beta_alpha_fz_cz": float("nan"),
+                        "alpha_posterior": float("nan"),
+                        "faa": float("nan"),
+                    },
+                    "diagnostic": {
+                        "buffer_samples": len(self.buffer),
+                        "needed_samples": int(self.fs * 2),
+                        "records": len(self.session.records),
+                    },
+                    "source": "aura",
+                    "ts": time.time(),
+                })
+                continue
+
             if in_cal:
                 self.session.baseline_buffer.append(metrics)
                 phase = "calibration"
@@ -268,6 +309,10 @@ class Recorder:
                 "adaptive_phase": phase,
                 "baseline_remaining_s": max(0.0, self.session.baseline_calibration_seconds - t) if in_cal else 0.0,
                 "metrics": metrics,
+                "diagnostic": {
+                    "buffer_samples": len(self.buffer),
+                    "records": len(self.session.records),
+                },
                 "source": "aura",
                 "ts": time.time(),
             })
@@ -336,22 +381,30 @@ class Recorder:
         elif t == "level_change":
             self.session.current_level = m.get("level")
         elif t in ("stop", "stop_video"):
+            print(f"[aura] stop received -- saving CSV (records={len(self.session.records)})")
             self.save_csv()
             self.session.active = False
             await ws.send(json.dumps({"type": "stop_video", "source": "aura"}))
 
     def save_csv(self):
-        if not self.session.records:
-            return
         eid = self.session.experiment_id or f"exp_{int(time.time())}"
         ts = datetime.now().strftime("%Y%m%d_%H%M%S")
         path = OUTPUT_DIR / f"{eid}_{ts}.csv"
+        n = len(self.session.records)
+        if n == 0:
+            # Still write an empty file so the user sees the path and knows the
+            # session ran without any EEG samples (helps diagnose AURA setup).
+            with open(path, "w", newline="") as f:
+                f.write("ts,level,phobia_id,ch1,ch2,ch3,ch4,ch5,ch6,ch7,ch8\n")
+            print(f"[aura] CSV saved (EMPTY, 0 samples received): {path}")
+            print("[aura] -> AURA stream resolved but no data arrived. Check the AURA software is actually streaming.")
+            return
         keys = list(self.session.records[0].keys())
         with open(path, "w", newline="") as f:
             w = csv.DictWriter(f, fieldnames=keys)
             w.writeheader()
             w.writerows(self.session.records)
-        print(f"[aura] CSV saved: {path}")
+        print(f"[aura] CSV saved: {path}  ({n} samples)")
 
 
 async def main_async(allow_mock):

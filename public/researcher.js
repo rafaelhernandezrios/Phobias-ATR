@@ -13,7 +13,7 @@ let currentLevel = null;
 function setConn(connected) {
   $('ws-dot').classList.toggle('on', connected);
   $('ws-dot').classList.toggle('off', !connected);
-  $('ws-label').textContent = connected ? 'WS conectado' : 'WS desconectado';
+  $('ws-label').textContent = connected ? 'WS connected' : 'WS disconnected';
 }
 function setRecorder(ready, msg) {
   $('rec-dot').classList.toggle('on', !!ready);
@@ -37,17 +37,17 @@ async function loadContent() {
 function connectWS() {
   const url = `wss://${location.host}/ws`;
   ws = new WebSocket(url);
-  ws.addEventListener('open', () => { setConn(true); log('WS abierto'); });
+  ws.addEventListener('open', () => { setConn(true); log('WS open'); });
   ws.addEventListener('close', () => {
     setConn(false); setRecorder(false);
-    log('WS cerrado — reintentando en 2s');
+    log('WS closed — retrying in 2s');
     setTimeout(connectWS, 2000);
   });
   ws.addEventListener('error', () => log('WS error'));
   ws.addEventListener('message', (ev) => {
     let m; try { m = JSON.parse(ev.data); } catch { return; }
     switch (m.type) {
-      case 'recorder_ready': setRecorder(true); log('recorder listo'); break;
+      case 'recorder_ready': setRecorder(true); log('recorder ready'); break;
       case 'recorder_error': setRecorder(false, m.message); log('recorder error: ' + (m.message || '')); break;
       case 'status': log('status: ' + m.status); break;
       case 'start_experiment':
@@ -80,10 +80,13 @@ function renderAdaptive(m) {
   $('m-ap').textContent = f(met.alpha_posterior);
   $('m-faa').textContent = f(met.faa);
   $('m-baseline').textContent = m.baseline_remaining_s != null ? `${f(m.baseline_remaining_s, 0)} s` : '—';
+  const d = m.diagnostic || {};
+  $('m-buf').textContent = d.buffer_samples != null ? String(d.buffer_samples) : '—';
+  $('m-rec').textContent = d.records != null ? String(d.records) : '—';
 }
 
 function send(obj) {
-  if (!ws || ws.readyState !== 1) { log('WS no conectado'); return; }
+  if (!ws || ws.readyState !== 1) { log('WS not connected'); return; }
   ws.send(JSON.stringify(obj));
 }
 

@@ -1,11 +1,11 @@
 @echo off
-REM Lanza sesión REAL con AURA: HTTPS :8443 + recorder Python leyendo LSL "AURA".
-REM Pre-requisitos: AURA encendido y software publicando el stream LSL antes de ejecutar.
+REM Launch REAL session with AURA: HTTPS :8443 + Python recorder reading LSL "AURA".
+REM Prerequisites: AURA headset powered on and its software publishing the LSL stream BEFORE running this.
 setlocal
 cd /d "%~dp0"
 set PYTHONIOENCODING=utf-8
 set PYTHONUTF8=1
-echo [run-experiment] Iniciando con AURA (LSL) ...
+echo [run-experiment] Starting with AURA (LSL) ...
 node scripts\run-experiment.js
 endlocal
 pause

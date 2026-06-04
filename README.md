@@ -1,109 +1,156 @@
 # VR Phobia Exposure · IKAN
 
-Plataforma de **exposición a fobias en VR (360°)** con dos vistas web:
+**360° phobia exposure platform** with two web views:
 
-- **Researcher** (PC Windows / Chrome o Edge): panel de control de sesión y métricas EEG en vivo.
-- **Participante / Quest 3** (`/participant` → `/wait?vr=1`): consentimiento → espera en VR → vídeo 360° controlado por el investigador.
+- **Researcher** (PC / Chrome or Edge): session control panel and live EEG metrics.
+- **Participant / Quest 3** (`/participant` → `/wait?vr=1`): consent → VR wait → 360° video driven by the researcher.
 
-EEG en producción: casco **AURA** vía **LSL** (stream `"AURA"`, 8 canales ~250 Hz). Mock incluido para pruebas sin casco.
+Production EEG: **AURA** headset via **LSL** (stream `"AURA"`, 8 channels @ ~250 Hz). A mock recorder is included for testing without the headset.
 
-## Arquitectura
+## Architecture
 
 ```
 Browser (Quest / Researcher)  ──wss──►  HTTPS server (Node, 8443)
                                                 │
                                                 ▼  ws://127.0.0.1:8765
                                        Recorder (Python AURA · LSL)
-                                       o Mock (Node)
+                                       or Mock (Node)
 ```
 
 ## Quick start (Windows 10/11)
 
-1. **Instalar Node LTS** desde nodejs.org (con "Add to PATH").
-2. En `cmd.exe` desde la carpeta del proyecto:
+1. Install **Node LTS** from nodejs.org (check "Add to PATH").
+2. From `cmd.exe` in the project folder:
    ```cmd
    npm install
    ```
-3. **Solo si vas a usar AURA real:** instalar Python 3.10+ ("Add to PATH") y:
+3. **Only if using real AURA:** install Python 3.10+ ("Add to PATH") and:
    ```cmd
    npm run setup:python
    ```
-4. Conéctate a la red Wi-Fi del laboratorio y genera el certificado (incluye la IP LAN actual):
+4. Connect to the lab Wi-Fi and generate the TLS cert (it embeds the current LAN IP):
    ```cmd
    npm run cert
    ```
-5. Abre el puerto en el firewall (Administrador):
+5. Open the port in the firewall (right-click → Run as Administrator):
    ```cmd
    scripts\open-firewall-windows.cmd
    ```
-6. Arrancar:
-   - **Con AURA (producción):** enciende el casco y el software AURA (LSL `"AURA"` activo) y ejecuta `run-experiment.bat`.
-   - **Sin casco (pruebas):** `run-experiment-mock.bat`.
-7. Encuentra la IP LAN (`ipconfig` → adaptador Wi-Fi). Abre:
-   - **Investigador:** `https://<IP-LAN>:8443/researcher`
-   - **Quest 3 (participante):** `https://<IP-LAN>:8443/participant` → acepta consentimiento → entra en VR.
+6. Launch:
+   - **With AURA (production):** power the headset and start the AURA software (LSL stream `"AURA"` must be active), then run `run-experiment.bat`.
+   - **Without the headset (testing):** `run-experiment-mock.bat`.
+7. Find your LAN IP (`ipconfig` → Wi-Fi adapter). Then open:
+   - **Researcher:** `https://<LAN-IP>:8443/researcher`
+   - **Quest 3 (participant):** `https://<LAN-IP>:8443/participant` → accept the cert exception once → consent → VR wait.
 
-> En el Quest hay que aceptar la excepción del certificado autofirmado una vez por dispositivo.
+## Session flow
 
-## Flujo de sesión
+1. Participant accepts consent → arrives at the VR "Waiting for researcher" scene.
+2. Researcher picks **phobia / initial level / duration / baseline calibration (s)** and presses **Start**.
+3. Participant sees the corresponding 360° video.
+4. Researcher can press **levels 0–5** for instant change, or let the EEG suggest up/hold/down (`hybrid` with auto-adaptation ON).
+5. **Stop** halts the video and (with AURA) writes a CSV in `output/`.
 
-1. El participante acepta consentimiento → llega a la pantalla VR "Esperando al investigador".
-2. El investigador configura **fobia / nivel inicial / duración / calibración (s)** y pulsa **Start**.
-3. El participante ve el vídeo 360° correspondiente.
-4. El investigador puede pulsar **niveles 0–5** (cambio inmediato), o dejar que el índice EEG sugiera subir/bajar (`hybrid` con adaptación ON).
-5. **Stop** detiene el vídeo y, con AURA, guarda un CSV en `output/`.
-
-## Estructura
+## Layout
 
 ```
-server/server.js          HTTPS 8443 + WS hub /ws + estáticos + API content
+server/server.js          HTTPS 8443 + WS hub /ws + static + content API
 public/                   index, researcher, participant (consent), wait (VR + 360 sphere)
-data/content.json         Mapeo fobia/nivel → MP4 en videos/
-videos/                   30 vídeos 360° (5 fobias × 6 niveles) + baseline.mp4
-scripts/aura_recorder.py  Recorder Python (LSL AURA + índice + CSV)
-scripts/mock_recorder.js  Recorder mock (sin casco)
-scripts/run-experiment.js Orquestador (recorder + HTTPS)
-scripts/generate-cert.js  Cert autofirmado con SAN incluyendo IP LAN
-scripts/test-ws.js        Smoke test del WS hub
-run-experiment.bat        Atajo Windows (AURA)
-run-experiment-mock.bat   Atajo Windows (mock)
-output/                   CSVs de sesión
+data/content.json         phobia/level -> MP4 mapping in videos/
+videos/                   30 360° videos (5 phobias × 6 levels) + baseline.mp4
+scripts/aura_recorder.py  Python recorder (LSL AURA + fear index + CSV)
+scripts/mock_recorder.js  Mock recorder (no headset)
+scripts/run-experiment.js Orchestrator (recorder + HTTPS)
+scripts/generate-cert.js  Self-signed cert with SAN including LAN IP
+scripts/test-ws.js        WS smoke test
+run-experiment.bat        Windows shortcut (AURA)
+run-experiment-mock.bat   Windows shortcut (mock)
+output/                   session CSVs
 ```
 
-## Protocolo WebSocket (`wss://<host>:8443/ws`)
+## WebSocket protocol (`wss://<host>:8443/ws`)
 
-Ver sección 4 de [`ESPECIFICACION_PROYECTO_VR_FOBIA.md`](ESPECIFICACION_PROYECTO_VR_FOBIA.md). Resumen:
+See section 4 of [`ESPECIFICACION_PROYECTO_VR_FOBIA.md`](ESPECIFICACION_PROYECTO_VR_FOBIA.md). Summary:
 
-Cliente → servidor: `controller_start`, `manual_level`, `set_auto_adaptation`, `level_change`, `stop`.
-Servidor → clientes: `recorder_ready`, `start_experiment`, `force_level`, `adaptive_state`, `auto_adaptation_toggle`, `stop_video`, `recorder_error`.
+Client → server: `controller_start`, `manual_level`, `set_auto_adaptation`, `level_change`, `stop`.
+Server → clients: `recorder_ready`, `start_experiment`, `force_level`, `adaptive_state`, `auto_adaptation_toggle`, `stop_video`, `recorder_error`.
 
-## Test rápido
+## Quick smoke test
 
-Con el sistema corriendo:
+While the system is running:
 ```cmd
 node scripts\test-ws.js
 ```
-Debe imprimir `OK: participant got start_experiment …`.
+Expected: `OK: participant got start_experiment ...`.
 
-## macOS/Linux (desarrollo)
+## macOS / Linux (development)
 
-Funciona, pero los `.bat` no aplican. Usa:
+Works, but the `.bat` files don't apply. Use:
 ```bash
 npm install
-npm run setup:python   # opcional, si vas a probar el recorder
+npm run setup:python   # optional, if testing the AURA recorder
 npm run cert
-npm run experiment      # con AURA (LSL)
-# o
-npm run experiment:mock # sin casco
+npm run experiment      # with AURA (LSL)
+# or
+npm run experiment:mock # without the headset
 ```
 
-## Solución de problemas
+## Troubleshooting
 
-| Síntoma | Acción |
+| Symptom | Action |
 |---|---|
-| Quest no carga la URL | Misma Wi-Fi; firewall 8443; cert con IP LAN actual (`npm run cert`). |
-| WS conectado pero sin vídeo | Asegúrate de que el recorder está vivo; UI debe ver `recorder_ready`. |
-| Python: `pylsl` falta | `npm run setup:python` (necesita Python 3 + pip en PATH). |
-| `Is AURA running?` | Encender AURA y software hasta ver el stream LSL `"AURA"` antes de iniciar. |
-| Autoplay del vídeo bloqueado | Toca el overlay "Tocar para iniciar vídeo" en el Quest. |
-# Phobias-ATR
+| Other devices on the LAN cannot reach `https://<IP>:8443` | See **LAN access** section below. |
+| Quest can't load the URL | Same Wi-Fi; firewall 8443; cert with current LAN IP (`npm run cert`). |
+| WS connected but no video | Make sure recorder is alive; UI should show `recorder_ready`. |
+| Python: `pylsl` missing | `npm run setup:python` (needs Python 3 + pip on PATH). |
+| `Is AURA running?` | Start AURA + its software so LSL stream `"AURA"` is visible BEFORE launching. |
+| Video autoplay blocked | Tap the "Tap to start video" overlay on the Quest. |
+
+## LAN access — when other devices on the same Wi-Fi can't reach the server
+
+The server listens on `0.0.0.0:8443` (all interfaces). If another machine on the same Wi-Fi can't connect, the cause is almost always one of:
+
+1. **Windows Firewall** — rule missing or wrong profile.
+2. **Network profile = Public** — Windows blocks inbound traffic on Public networks by default.
+3. **AP/client isolation on the Wi-Fi router** — common on guest SSIDs and many corporate APs. Clients can reach the internet but not each other. No software fix possible.
+4. **Antivirus/EDR** blocking inbound TCP.
+
+### Diagnostic steps (in order)
+
+On the **server PC**:
+```cmd
+ipconfig
+netstat -an | findstr :8443
+```
+The second command must show `0.0.0.0:8443  LISTENING`.
+
+From **another device** on the same Wi-Fi:
+```cmd
+ping <server-LAN-IP>
+```
+- **Ping fails** → AP isolation or different subnet. Fix at the router or use a different network.
+- **Ping works, browser fails** → firewall or antivirus on the server.
+
+### Fixes to try
+
+1. Re-run `scripts\open-firewall-windows.cmd` as Administrator (it now opens TCP 8443 for **all profiles** — domain/private/public).
+2. Set the Wi-Fi profile to Private:
+   ```powershell
+   Set-NetConnectionProfile -InterfaceAlias "Wi-Fi" -NetworkCategory Private
+   ```
+3. Temporarily disable Windows Firewall to confirm the cause:
+   ```cmd
+   netsh advfirewall set allprofiles state off
+   ```
+   (Re-enable with `on` immediately after testing.)
+4. Disable antivirus inbound rules briefly and retest.
+
+### Recommended fallbacks if the LAN keeps blocking you
+
+- **Use a phone hotspot or a personal travel router** for the lab session. Connect server PC + Quest + visitor PCs to it. This bypasses corporate AP isolation entirely. This is what you mentioned wanting to try with a modem and is by far the most reliable fix in shared/IT-managed Wi-Fi.
+- **Bring a small consumer Wi-Fi router** (e.g. GL.iNet pocket router) configured for the lab. Same idea, dedicated SSID, no IT involvement.
+- **Wired tethering** (server PC tethered to the same hotspot via USB) gives a stable LAN with the Quest on Wi-Fi from the same hotspot.
+- **Cloudflare Tunnel / ngrok / tailscale-funnel** as a last resort (puts the HTTPS server on a public URL with a valid cert). Avoids cert issues on the Quest too, but adds latency — not ideal for live EEG sync.
+- **Tailscale mesh** (free for small teams): each device installs Tailscale and gets a private 100.x address that works across networks. Good for remote demos.
+
+For the lab, **option 1 (hotspot/portable router)** is what I'd recommend first: it's the simplest, removes IT dependency, and is the same setup the spec assumes (server + Quest on a private SSID).

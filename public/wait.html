@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="es">
+<html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>VR — Esperando al investigador</title>
+  <title>VR — Waiting for researcher</title>
   <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
   <style>
     html, body { margin: 0; padding: 0; background: #000; color: #fff; font-family: system-ui, sans-serif; overflow: hidden; }
@@ -32,14 +32,14 @@
 </head>
 <body>
   <div id="hud">
-    <span class="pill" id="hud-state">Esperando al investigador…</span>
-    <span class="pill" id="hud-conn">conectando…</span>
+    <span class="pill" id="hud-state">Waiting for researcher…</span>
+    <span class="pill" id="hud-conn">connecting…</span>
   </div>
 
   <button id="emergency">EMERGENCY EXIT</button>
 
   <div id="autoplay-overlay">
-    <button id="play-btn">Tocar para iniciar vídeo</button>
+    <button id="play-btn">Tap to start video</button>
   </div>
 
   <a-scene background="color: #000" vr-mode-ui="enabled: true" embedded style="height: 100vh; width: 100vw;">
@@ -54,8 +54,8 @@
     <a-entity id="wait-scene">
       <a-sky color="#0b0d12"></a-sky>
       <a-entity position="0 1.6 -2.5">
-        <a-text value="Esperando al investigador" align="center" color="#FFFFFF" width="6" position="0 0.3 0"></a-text>
-        <a-text id="wait-conn-text" value="Conectando…" align="center" color="#8aa" width="4" position="0 -0.2 0"></a-text>
+        <a-text value="Waiting for researcher" align="center" color="#FFFFFF" width="6" position="0 0.3 0"></a-text>
+        <a-text id="wait-conn-text" value="Connecting..." align="center" color="#8aa" width="4" position="0 -0.2 0"></a-text>
       </a-entity>
       <a-entity light="type: ambient; color: #888"></a-entity>
     </a-entity>
@@ -110,14 +110,14 @@
     function showWait() {
       sphere.setAttribute('visible', false);
       waitScene.setAttribute('visible', true);
-      hudState.textContent = 'Esperando al investigador…';
+      hudState.textContent = 'Waiting for researcher…';
       try { vid.pause(); } catch (_) {}
     }
 
     function showExposure(phobiaId, level) {
       const url = videoUrlFor(phobiaId, level);
       if (!url) { console.warn('no video for', phobiaId, level); return; }
-      hudState.textContent = `${phobiaId} · nivel ${level}`;
+      hudState.textContent = `${phobiaId} - level ${level}`;
       // Swap source and play
       vid.src = url;
       vid.load();
@@ -162,17 +162,17 @@
       ws = new WebSocket(`wss://${location.host}/ws`);
       ws.addEventListener('open', () => {
         wsOpen = true;
-        setConn(recorderOK ? 'conectado' : 'conectando…');
+        setConn(recorderOK ? 'connected' : 'connecting...');
       });
       ws.addEventListener('close', () => {
         wsOpen = false; recorderOK = false;
-        setConn('reintentando…');
+        setConn('retrying...');
         setTimeout(connectWS, 2000);
       });
       ws.addEventListener('message', (ev) => {
         let m; try { m = JSON.parse(ev.data); } catch { return; }
         switch (m.type) {
-          case 'recorder_ready': recorderOK = true; setConn('conectado'); break;
+          case 'recorder_ready': recorderOK = true; setConn('connected'); break;
           case 'recorder_error': recorderOK = false; setConn('recorder offline'); break;
           case 'start_experiment':
             currentPhobia = m.phobia_id;

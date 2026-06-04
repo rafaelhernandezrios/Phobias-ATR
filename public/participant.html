@@ -1,29 +1,29 @@
 <!doctype html>
-<html lang="es">
+<html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Consentimiento — VR Phobia</title>
+  <title>Consent — VR Phobia</title>
   <link rel="stylesheet" href="/styles.css" />
 </head>
 <body>
   <div class="consent">
-    <h1>Consentimiento informado</h1>
+    <h1>Informed consent</h1>
     <p>
-      Esta sesión implica exposición a contenido visual inmersivo (360°) que puede incluir
-      <strong>arañas, serpientes, insectos, alturas o espacios cerrados</strong>. La intensidad
-      crece de forma gradual y siempre bajo la supervisión del investigador.
+      This session involves exposure to immersive 360&deg; visual content that may include
+      <strong>spiders, snakes, insects, heights, or enclosed spaces</strong>. Intensity
+      increases gradually and always under the researcher's supervision.
     </p>
     <ul>
-      <li>Puede detener la sesión en cualquier momento.</li>
-      <li>Durante la exposición tendrá un botón <strong>Emergency exit</strong> visible.</li>
-      <li>Si usa el casco EEG <strong>AURA</strong>, los datos se asocian a un <em>experiment_id</em> anonimizable.</li>
-      <li>Si experimenta malestar significativo, quítese el visor y avise al investigador.</li>
+      <li>You may stop the session at any time.</li>
+      <li>During exposure an <strong>EMERGENCY EXIT</strong> button is always visible.</li>
+      <li>If you wear the <strong>AURA</strong> EEG headset, data is linked to an anonymizable <em>experiment_id</em>.</li>
+      <li>If you feel significant discomfort, remove the headset and notify the researcher.</li>
     </ul>
-    <p>Al pulsar <strong>Aceptar</strong> acepta participar en estas condiciones.</p>
+    <p>By pressing <strong>Accept</strong> you agree to participate under these conditions.</p>
     <div class="actions">
-      <button id="accept" class="primary">Aceptar</button>
-      <button id="reject" class="danger">Rechazar</button>
+      <button id="accept" class="primary">Accept</button>
+      <button id="reject" class="danger">Decline</button>
     </div>
   </div>
   <script>
@@ -31,7 +31,7 @@
       location.href = '/wait?vr=1';
     });
     document.getElementById('reject').addEventListener('click', () => {
-      document.body.innerHTML = '<div class="consent"><h1>Sesión cancelada</h1><p>Gracias.</p></div>';
+      document.body.innerHTML = '<div class="consent"><h1>Session cancelled</h1><p>Thank you.</p></div>';
     });
   </script>
 </body>
