@@ -180,7 +180,9 @@
             showExposure(currentPhobia, currentLevel);
             break;
           case 'force_level':
-            if (currentPhobia != null) {
+            // Skip echoes of our own auto-adaptation (recorder bounces level_change back as force_level for the researcher UI)
+            if (m.auto && m.level === currentLevel) break;
+            if (currentPhobia != null && m.level !== currentLevel) {
               currentLevel = m.level;
               showExposure(currentPhobia, currentLevel);
             }

@@ -380,6 +380,8 @@ class Recorder:
             await ws.send(json.dumps({"type": "auto_adaptation_toggle", "enabled": self.session.auto_adaptation}))
         elif t == "level_change":
             self.session.current_level = m.get("level")
+            # Echo so the researcher panel reflects the auto-adapted level
+            await ws.send(json.dumps({"type": "force_level", "level": m.get("level"), "source": "aura", "auto": True}))
         elif t in ("stop", "stop_video"):
             print(f"[aura] stop received -- saving CSV (records={len(self.session.records)})")
             self.save_csv()

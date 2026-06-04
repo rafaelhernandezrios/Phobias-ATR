@@ -36,16 +36,24 @@ setInterval(() => {
   const t = (Date.now() - session.startedAt) / 1000;
   const inCal = t < session.baseline_calibration_seconds;
 
-  const theta_fz = 1 + 0.4 * randn();
-  const beta_alpha = 0.9 + 0.3 * randn();
-  const alpha_post = 1.1 + 0.3 * randn();
-  const faa = 0.05 * randn();
-  const fear = 0.25 * (theta_fz + beta_alpha + (1.5 - alpha_post) + faa);
+  // Sinusoidal fear curve so suggestions reliably cross the up/down thresholds.
+  // Period 20s -> roughly one up + one down per 20s window.
+  const phase = ((Date.now() - session.startedAt) / 20000) * 2 * Math.PI;
+  const fear = 1.5 * Math.sin(phase) + 0.2 * randn();
+
+  // Synthesize plausible metrics that move with the fear value
+  const theta_fz = 1 + 0.4 * fear + 0.1 * randn();
+  const beta_alpha = 1.0 + 0.3 * fear + 0.1 * randn();
+  const alpha_post = 1.1 - 0.3 * fear + 0.1 * randn();
+  const faa = 0.05 * fear + 0.05 * randn();
 
   let suggestion = 'hold';
   if (!inCal && session.current_level != null) {
-    if (fear > 1.0 && session.current_level > 0) suggestion = 'down';
-    else if (fear < -0.3 && session.current_level < 5) suggestion = 'up';
+    if (fear > 0.8 && session.current_level > 0) suggestion = 'down';
+    else if (fear < -0.4 && session.current_level < 5) suggestion = 'up';
+  }
+  if (suggestion !== 'hold') {
+    console.log(`[mock-recorder] suggestion=${suggestion}  fear=${fear.toFixed(2)}  level=${session.current_level}`);
   }
 
   broadcast({
@@ -58,6 +66,7 @@ setInterval(() => {
     metrics: {
       theta_fz, beta_alpha_fz_cz: beta_alpha, alpha_posterior: alpha_post, faa,
     },
+    diagnostic: { buffer_samples: 0, records: 0 },
     source: 'mock',
     ts: Date.now(),
   });
@@ -102,6 +111,8 @@ wss.on('connection', (ws) => {
         break;
       case 'level_change':
         session.current_level = m.level;
+        // Echo so the researcher panel sees the auto-adapted level
+        ws.send(JSON.stringify({ type: 'force_level', level: m.level, source: 'mock', auto: true }));
         break;
       case 'stop':
         session.active = false;
