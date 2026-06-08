@@ -1,17 +1,10 @@
 @echo off
-REM Launch the native PyQt6 researcher panel.
-REM On a new PC: auto-runs npm install + Python venv if missing (see setup-env.bat).
-REM Optional args:  researcher.bat --host 192.168.16.115 --port 8443
+REM Open the web researcher panel in the default browser (no PyQt, no Electron).
+REM Start run-experiment.bat first, or this only opens the URL.
 setlocal
 cd /d "%~dp0"
-call "%~dp0setup-env.bat"
-if errorlevel 1 (
-  pause
-  exit /b 1
-)
-set PYTHONIOENCODING=utf-8
-set PYTHONUTF8=1
-
-set "VENV_PY=%~dp0.venv\Scripts\python.exe"
-"%VENV_PY%" scripts\researcher_qt.py %*
+set "URL=https://localhost:8443/researcher"
+echo [researcher] Opening %URL%
+echo   If the page does not load, run run-experiment.bat or run-experiment-mock.bat first.
+start "" "%URL%"
 endlocal

@@ -9,7 +9,7 @@
     "mock": "node scripts/mock_recorder.js",
     "experiment": "node scripts/run-experiment.js",
     "experiment:mock": "node scripts/run-experiment.js --mock",
-    "researcher": "node -e \"const{spawn}=require('child_process');const p=process.platform==='win32'?'.venv\\\\Scripts\\\\python.exe':'.venv/bin/python';spawn(p,['scripts/researcher_qt.py'],{stdio:'inherit',shell:false})\"",
+    "researcher": "node -e \"const{exec}=require('child_process');const u='https://localhost:8443/researcher';process.platform==='win32'?exec('start \\\"\\\" '+u):process.platform==='darwin'?exec('open '+u):exec('xdg-open '+u)\"",
     "setup:python": "node scripts/setup-python.js",
     "test:ws": "node scripts/test-ws.js"
   },

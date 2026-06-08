@@ -1,25 +1,16 @@
 @echo off
-REM Windows setup for a new lab PC: npm install + Python venv + pip deps.
-REM Requires: Node.js + Python 3.10-3.13 (3.11 recommended).
+REM Web stack only: Node deps + TLS cert. No PyQt, no Python (mock mode works with this alone).
 setlocal
 cd /d "%~dp0"
+call "%~dp0tools\use-portable-env.bat"
 
-where node >nul 2>&1
+"%NODE%" --version >nul 2>&1
 if errorlevel 1 (
-  echo [setup-env] Node.js not found.
-  echo   Install from https://nodejs.org/  then re-run this script.
-  endlocal
-  exit /b 1
-)
-
-where py >nul 2>&1
-if errorlevel 1 (
-  where python >nul 2>&1
+  where node >nul 2>&1
   if errorlevel 1 (
-    echo [setup-env] Python not found.
-    echo   Install Python 3.11 from https://www.python.org/downloads/windows/
-    echo   Check "Add python.exe to PATH" during install.
-    echo   Tip: disable the Microsoft Store python alias in Windows Settings.
+    echo [setup-env] Node.js not found.
+    echo   Option A: run prepare-usb.bat on a PC with internet ^(bundles Node to tools\node^)
+    echo   Option B: install Node from https://nodejs.org/
     endlocal
     exit /b 1
   )
@@ -27,7 +18,7 @@ if errorlevel 1 (
 
 if not exist "node_modules\" (
   echo [setup-env] node_modules not found — running npm install...
-  call npm install
+  call "%NPM%" install
   if errorlevel 1 (
     echo [setup-env] npm install failed.
     endlocal
@@ -35,18 +26,17 @@ if not exist "node_modules\" (
   )
 )
 
-REM Always run setup:python (creates .venv if missing; pip install is idempotent).
-echo [setup-env] Ensuring Python venv and deps...
-call npm run setup:python
-if errorlevel 1 (
-  echo [setup-env] setup:python failed.
-  echo   If a previous run failed halfway, delete .venv and retry:
-  echo     rmdir /s /q .venv
-  echo     setup-env.bat
-  endlocal
-  exit /b 1
+if not exist "server\cert\cert.pem" (
+  echo [setup-env] TLS cert not found — generating...
+  call "%NPM%" run cert
+  if errorlevel 1 (
+    echo [setup-env] cert generation failed.
+    endlocal
+    exit /b 1
+  )
 )
 
-echo [setup-env] OK — ready for run-experiment.bat / researcher.bat
+echo [setup-env] OK — web stack ready.
+echo   Researcher panel: https://localhost:8443/researcher
 endlocal
 exit /b 0

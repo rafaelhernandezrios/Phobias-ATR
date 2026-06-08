@@ -1,4 +1,4 @@
-// Windows-first setup: create .venv and install Python deps for AURA recorder + researcher panel.
+// Windows-first setup: create .venv and install Python deps for the AURA recorder only (no PyQt).
 const { spawnSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
@@ -82,9 +82,7 @@ if (!fs.existsSync(venvPy)) {
   run(py.cmd, [...py.baseArgs, '-m', 'venv', venv]);
 }
 run(venvPy, ['-m', 'pip', 'install', '--upgrade', 'pip']);
-// QtWebSockets ships inside the base PyQt6 wheel (no separate PyPI package).
 run(venvPy, ['-m', 'pip', 'install',
   'pylsl', 'numpy', 'scipy', 'websockets',
-  'PyQt6',
 ]);
 console.log('\n[setup:python] OK. venv at', venv);

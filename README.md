@@ -17,6 +17,30 @@ Browser (Quest / Researcher)  ──wss──►  HTTPS server (Node, 8443)
                                        or Mock (Node)
 ```
 
+## USB / locked-down PC (no downloads on lab machine)
+
+The researcher panel is **web-only** (`https://localhost:8443/researcher`) — no PyQt, no Electron.
+
+On a PC **with internet** (once), in the project folder:
+
+```cmd
+prepare-usb.bat
+```
+
+This downloads portable Node to `tools/node/`, runs `npm install`, generates the TLS cert, and (optionally) builds the Python venv for AURA. Copy the **entire folder** to a USB drive.
+
+On the **lab PC** (no npm/pip/Electron needed):
+
+| Goal | Double-click |
+|---|---|
+| Test without headset | `run-experiment-mock.bat` |
+| Real AURA session | `run-experiment.bat` |
+| Open panel only | `researcher.bat` |
+
+Mock mode needs **only** the files on the USB (Node bundled in `tools/node/`). Real AURA still needs the `.venv` prepared on a Windows machine beforehand.
+
+The browser opens the researcher panel automatically. Accept the self-signed cert warning once.
+
 ## Quick start (Windows 10/11)
 
 1. Install **Node LTS** from nodejs.org (check "Add to PATH").
@@ -63,8 +87,10 @@ scripts/mock_recorder.js  Mock recorder (no headset)
 scripts/run-experiment.js Orchestrator (recorder + HTTPS)
 scripts/generate-cert.js  Self-signed cert with SAN including LAN IP
 scripts/test-ws.js        WS smoke test
+prepare-usb.bat           One-time prep for offline USB (downloads deps)
 run-experiment.bat        Windows shortcut (AURA)
 run-experiment-mock.bat   Windows shortcut (mock)
+researcher.bat            Open web panel in browser
 output/                   session CSVs
 ```
 

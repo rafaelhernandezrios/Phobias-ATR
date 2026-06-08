@@ -1,6 +1,7 @@
 // Orchestrator: spawns recorder (AURA python or mock node) + HTTPS server.
 // Usage:  node scripts/run-experiment.js [--mock]
-const { spawn } = require('child_process');
+// Set OPEN_RESEARCHER=1 to open https://localhost:8443/researcher in the default browser.
+const { spawn, exec } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 
@@ -30,9 +31,27 @@ if (mock) {
   recorder = spawnLogged('aura', py, [path.join('scripts', 'aura_recorder.py')]);
 }
 
+function openResearcherPanel() {
+  if (!process.env.OPEN_RESEARCHER) return;
+  const url = 'https://localhost:8443/researcher';
+  const openers = {
+    win32: `start "" "${url}"`,
+    darwin: `open "${url}"`,
+    linux: `xdg-open "${url}"`,
+  };
+  const cmd = openers[process.platform];
+  if (!cmd) return;
+  setTimeout(() => {
+    exec(cmd, { shell: true }, (err) => {
+      if (err) console.log(`[https] open browser manually: ${url}`);
+    });
+  }, 1500);
+}
+
 // Give the recorder a head start
 setTimeout(() => {
   const server = spawnLogged('https', process.execPath, [path.join('server', 'server.js')]);
+  openResearcherPanel();
   const shutdown = () => {
     try { recorder.kill(); } catch (_) {}
     try { server.kill(); } catch (_) {}
