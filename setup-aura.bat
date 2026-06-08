@@ -10,8 +10,8 @@ where py >nul 2>&1
 if errorlevel 1 (
   where python >nul 2>&1
   if errorlevel 1 (
-    echo [setup-aura] Python not found — required only for real AURA sessions.
-    echo   Mock mode ^(run-experiment-mock.bat^) does NOT need Python.
+    echo [setup-aura] Python not found - required only for real AURA sessions.
+    echo   Mock mode (run-experiment-mock.bat) does NOT need Python.
     echo   Install Python 3.11 from https://www.python.org/downloads/windows/
     endlocal
     exit /b 1
@@ -19,7 +19,7 @@ if errorlevel 1 (
 )
 
 echo [setup-aura] Ensuring Python venv for AURA recorder...
-call "%NPM%" run setup:python
+"%NODE%" scripts\setup-python.js
 if errorlevel 1 (
   echo [setup-aura] failed. Try: rmdir /s /q .venv  then setup-aura.bat
   endlocal
