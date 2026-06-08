@@ -28,7 +28,7 @@ try:
     from PyQt6.QtWebSockets import QWebSocket
 except ImportError as e:
     print("PyQt6 missing. Run:  npm run setup:python", file=sys.stderr)
-    print("(or)  pip install PyQt6 PyQt6-WebSockets", file=sys.stderr)
+    print("(or)  pip install PyQt6", file=sys.stderr)
     print(f"Original error: {e}", file=sys.stderr)
     sys.exit(1)
 
